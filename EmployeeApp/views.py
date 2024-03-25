@@ -1,3 +1,4 @@
+from django.contrib.auth.decorators import login_required
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
@@ -464,3 +465,37 @@ def search_employee(request):
 
     except Employee.DoesNotExist:
         return HttpResponseNotFound("Employee not found")
+
+
+
+from django.shortcuts import render, redirect
+from django.contrib.auth import authenticate, login, logout
+@login_required
+def custom_login(request):
+    """
+    Custom login view.
+    """
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            # Redirect to a success page
+            return redirect('success_url')
+        else:
+            # Return an 'invalid login' error message
+            return render(request, 'login.html', {'error': 'Invalid login'})
+    else:
+        return render(request, 'login.html')
+
+@login_required
+def custom_logout(request):
+    """
+    Custom logout view.
+    """
+    logout(request)
+    # Redirect to a success page
+    return redirect('success_url')
+
+

@@ -1,5 +1,6 @@
-from django.urls import path, re_path
+from django.urls import path, re_path, include
 from . import views
+from django.contrib.auth import views as auth_views
 from .views import (
     department_api,
     EmployeeListCreateView, EmployeeRetrieveUpdateDestroyView,
@@ -63,4 +64,14 @@ urlpatterns = [
     re_path(r'employee/', views.employee_api),
     re_path(r'SaveFile/', save_file),
     path('affectations/', AffectationListCreateView.as_view(), name='affectation-list-create'),
+
+
+
+
+    path('accounts/', include('django.contrib.auth.urls')),
+
+    #Logreg
+    path('login/', views.custom_login, name='custom_login'),
+    path('logout/', views.custom_logout, name='custom_logout'),
+
 ]

@@ -1,8 +1,69 @@
 # models.py in EmployeeApp
 
-from django.core.validators import RegexValidator, FileExtensionValidator
+from django.core.validators import RegexValidator,MinValueValidator, MaxValueValidator
+from django.utils.translation import gettext_lazy as _
+from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 
+class CustomUser(AbstractUser):
+    # Custom fields
+    first_name = models.CharField(max_length=150)
+    last_name = models.CharField(max_length=150)
+    date_of_birth = models.DateField(null=True, blank=True)
+    profile_picture = models.ImageField(upload_to='profile_pics/', null=True, blank=True)
+    phone_number = models.CharField(max_length=20, null=True, blank=True)
+    address = models.CharField(max_length=255, null=True, blank=True)
+    bio = models.TextField(null=True, blank=True)
+    can_edit_posts = models.BooleanField(default=False)
+    can_delete_comments = models.BooleanField(default=False)
+    is_employee = models.BooleanField(default=False)
+    is_manager = models.BooleanField(default=False)
+    is_admin = models.BooleanField(default=False)
+    facebook_url = models.URLField(max_length=200, null=True, blank=True)
+    twitter_url = models.URLField(max_length=200, null=True, blank=True)
+    is_subscribed = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    preferred_language = models.CharField(max_length=10, default='fr')
+
+    # Other fields from AbstractUser (username, email, password, etc.) are already included
+
+    def __str__(self):
+        return self.username
+
+    class Meta:
+        verbose_name = _('user')
+        verbose_name_plural = _('users')
+
+
+class CustomUserManager(BaseUserManager):
+    def create_user(self, email, username, password=None, **extra_fields):
+        if not email:
+            raise ValueError('The Email field must be set')
+        email = self.normalize_email(email)
+        user = self.model(email=email, username=username, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, username, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+
+        return self.create_user(email, username, password, **extra_fields)
+
+# Set unique related_name for groups and user_permissions
+CustomUser._meta.get_field('groups').related_name = 'custom_user_groups'
+CustomUser._meta.get_field('user_permissions').related_name = 'custom_user_permissions'
+
+from django.conf import settings
+class Traceability(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    action_type = models.CharField(max_length=255)
+    action_date = models.DateTimeField(auto_now_add=True)
+    details = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"{self.action_type} by {self.user} at {self.action_date}"
 
 class Onboarding(models.Model):
     nomCycle = models.CharField(max_length=255)
@@ -17,7 +78,12 @@ class EtapeOnboarding(models.Model):
 
 class Department(models.Model):
     depName = models.CharField(max_length=255)
-    depLevel = models.IntegerField()
+    depLevel = models.IntegerField(
+        validators=[
+            MinValueValidator(1),
+            MaxValueValidator(8)
+        ]
+    )
     employees = models.ForeignKey('Employee', on_delete=models.CASCADE, related_name='employee_departments', default=None, null=True)
     numOfEmployees = models.IntegerField()
 
@@ -44,6 +110,9 @@ class Competence(models.Model):
     def __str__(self):
         return f"{self.tache} - {self.diplome}"
 
+
+
+
 class Employee(models.Model):
     employeeID = models.IntegerField()
     firstName = models.CharField(max_length=255, null=True, blank=True)
@@ -56,20 +125,49 @@ class Employee(models.Model):
     startDate = models.DateField()
     departureDate = models.DateField(null=True, blank=True)  # Allow null and blank values
     sanctions = models.TextField()
-
-
     handicap = models.CharField(max_length=255, null=True, blank=True)
-
     salary = models.FloatField()
     retirementDate = models.DateField(null=True, blank=True)
     employeeCarreerHistory = models.TextField()
-
     onboarding = models.ForeignKey('Onboarding', on_delete=models.SET_NULL, null=True, blank=True, related_name='employees')
-
     competences = models.ManyToManyField(Competence, through='EmployeeCompetence', related_name='employees')
+    matricule = models.CharField(max_length=8, unique=True, default=None,null=False, validators=[RegexValidator(regex='^\d{8}$', message='Le matricule doit contenir exactement 8 chiffres.')])
 
-    matricule = models.CharField(max_length=8, unique=True, default='',validators=[RegexValidator(regex='^\d{8}$', message='Le matricule doit contenir exactement 8 chiffres.')])
+    # Correct field name should be 'level'
+    level = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(8)]
+    )
 
+    emplacement = models.CharField(max_length=255,default=None)
+
+
+
+    performance_rate = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True,
+                                           verbose_name=_("Performance Rate (%)"))
+    def calculate_performance_rate(self):
+
+        sanctions_factor = 1 - (len(self.sanctions) / 100)  # na9as fih % aux sanctions
+        salary_factor = self.salary / 5000
+        availability_factor = 1
+        leave_factor = 1 - (0.02 * len(self.leave_set.all()))
+
+        performance_rate = (
+                                   (sanctions_factor * 0.3) +
+                                   (salary_factor * 0.4) +
+                                   (availability_factor * 0.2) +
+                                   (leave_factor * 0.1)
+                           ) * 100
+        return min(max(performance_rate, 0), 100)
+
+    def save(self, *args, **kwargs):
+        action_type = "Saisie de position administrative"
+        action_details = f"Position administrative ajoutée pour {self.firstName} {self.lastName}"
+
+        # Enregistrer la trace de l'action
+        Traceability.objects.create(user=self.user_who_performed_action, action_type=action_type,
+                                    details=action_details)
+
+        super(Employee, self).save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.firstName} {self.lastName}"
@@ -104,7 +202,7 @@ class Tache(models.Model):
     presence = models.BooleanField(blank=True, null=True, help_text="Présence sur site")
 
 
-class Affectation(models.Model):
+class Affectation(models.Model): #des employees a prpos les postes
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     poste = models.ForeignKey(Poste, on_delete=models.CASCADE)
     ratio = models.DecimalField(max_digits=5, decimal_places=2)
@@ -124,10 +222,11 @@ class EmploymentHistory(models.Model):
     def __str__(self):
         return f"{self.employee} - {self.employer} - {self.position}"
 
+class Leave(models.Model):   #congé
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='leave_set')
+    start_date = models.DateField()
+    end_date = models.DateField()
 
-
-
-
-
-
+    def __str__(self):
+        return f"{self.employee} - Leave: {self.start_date} to {self.end_date}"
 
