@@ -62,6 +62,19 @@ class EmployeeCompetenceSerializer(serializers.ModelSerializer):
         model = EmployeeCompetence
         fields = '__all__'
 
+class EmployeeCompetenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmployeeCompetence
+        fields = '__all__'
+
+
+class EmployeeSearchSerializer(serializers.ModelSerializer):
+    competences = serializers.StringRelatedField(many=True)
+
+    class Meta:
+        model = Employee
+        fields = ['id', 'firstName', 'lastName', 'position', 'competences']
+
 
 
 
