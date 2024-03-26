@@ -1,4 +1,6 @@
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.views.decorators.csrf import csrf_protect
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
@@ -7,13 +9,16 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponseNotFound
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
+from django.http import JsonResponse
+from django.middleware.csrf import get_token
+from rest_framework.utils import json
 
 from .models import (
     Department, Employee, Poste, Tache,
     Competence, Onboarding, EtapeOnboarding,
     Equipe, Affectation, EmploymentHistory
 )
-from .forms import PosteForm
+from .forms import PosteForm, UserRegistrationForm
 from .serializers import (
     DepartmentSerializer, EmployeeSerializer, PosteSerializer,
     TacheSerializer, CompetenceSerializer, EquipeSerializer,
@@ -470,32 +475,117 @@ def search_employee(request):
 
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
-@login_required
+from django.urls import reverse
+
+
+
+from django.shortcuts import render, redirect
+from django.contrib.auth import authenticate, login
+from django.http import JsonResponse
+
+from django.shortcuts import render, redirect
+from django.contrib.auth import authenticate, login
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
+
+@csrf_exempt
 def custom_login(request):
-    """
-    Custom login view.
-    """
     if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
+        # Get username and password from request body (form data or JSON)
+        if 'username' in request.POST and 'password' in request.POST:
+            username = request.POST.get('username')
+            password = request.POST.get('password')
+        else:
+            try:
+                data = json.loads(request.body)
+                username = data.get('username')
+                password = data.get('password')
+            except json.JSONDecodeError:
+                return JsonResponse({'error': 'Invalid JSON format in request body'}, status=400)
+
+        # Check if username and password are provided
+        if not username or not password:
+            return JsonResponse({'error': 'Username and password are required'}, status=400)
+
+        # Authenticate user
         user = authenticate(request, username=username, password=password)
         if user is not None:
+            # Login user
             login(request, user)
-            # Redirect to a success page
-            return redirect('success_url')
+            # Return a success message in JSON response
+            return JsonResponse({'success': 'Login successful'}, status=200)
         else:
-            # Return an 'invalid login' error message
-            return render(request, 'login.html', {'error': 'Invalid login'})
+            # Return an error response in JSON
+            return JsonResponse({'error': 'Invalid credentials'}, status=400)
     else:
-        return render(request, 'login.html')
+        # Return an error for unsupported methods
+        return JsonResponse({'error': 'Method Not Allowed'}, status=405)
 
-@login_required
+
+from django.shortcuts import redirect
+from django.contrib.auth import logout
+
 def custom_logout(request):
     """
     Custom logout view.
     """
-    logout(request)
-    # Redirect to a success page
-    return redirect('success_url')
+    if request.user.is_authenticated:
+        logout(request)
+        return JsonResponse({'message': 'Logout successful'}, status=200)
+    else:
+        return JsonResponse({'error': 'User not logged in'}, status=400)
 
 
+import json
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .models import CustomUser
+
+@csrf_exempt
+def register(request):
+    """
+    User registration view.
+    """
+    if request.method == 'POST':
+        try:
+            # Load JSON data from request body
+            data = json.loads(request.body)
+
+            # Extract CustomUser data from JSON data
+            custom_user_data = data.get('CustomUser', {})
+
+            # Extract fields from CustomUser data
+            username = custom_user_data.get('username', None)
+            email = custom_user_data.get('email', None)
+            password = custom_user_data.get('password', None)
+
+            # Check if all required fields are present
+            if not username or not email or not password:
+                return JsonResponse({'errors': 'All fields are required'}, status=400)
+
+            # Check if a user with the provided email already exists
+            if CustomUser.objects.filter(email=email).exists():
+                return JsonResponse({'errors': 'Email address already exists'}, status=400)
+
+            # Create the CustomUser
+            user = CustomUser.objects.create_user(username=username, email=email, password=password)
+
+            # Optional: Add additional fields to the user object
+            user.first_name = custom_user_data.get('first_name', '')
+            user.last_name = custom_user_data.get('last_name', '')
+            user.date_of_birth = custom_user_data.get('date_of_birth', None)
+            # Add more fields as needed
+
+            # Save the user
+            user.save()
+
+            return JsonResponse({'message': 'User registered successfully'}, status=201)
+
+        except json.JSONDecodeError as e:
+            return JsonResponse({'errors': 'Invalid JSON data'}, status=400)
+
+        except Exception as e:
+            return JsonResponse({'errors': str(e)}, status=400)
+
+    return JsonResponse({'errors': 'Invalid request method'}, status=405)

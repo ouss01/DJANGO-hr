@@ -10,3 +10,9 @@ class PosteForm(forms.ModelForm):
     # Add any additional form field customizations or validations if needed
 
 
+from django import forms
+
+class UserRegistrationForm(forms.Form):
+    username = forms.CharField(max_length=150)
+    email = forms.EmailField()
+    password = forms.CharField(widget=forms.PasswordInput())

@@ -73,5 +73,5 @@ urlpatterns = [
     #Logreg
     path('login/', views.custom_login, name='custom_login'),
     path('logout/', views.custom_logout, name='custom_logout'),
-
+    path('register/', views.register, name='register'),
 ]

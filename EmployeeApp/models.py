@@ -51,11 +51,32 @@ class CustomUserManager(BaseUserManager):
 
         return self.create_user(email, username, password, **extra_fields)
 
-# Set unique related_name for groups and user_permissions
-CustomUser._meta.get_field('groups').related_name = 'custom_user_groups'
-CustomUser._meta.get_field('user_permissions').related_name = 'custom_user_permissions'
+    # Set unique related_name for groups and user_permissions
+    CustomUser._meta.get_field('groups').related_name = 'custom_user_groups'
+    CustomUser._meta.get_field('user_permissions').related_name = 'custom_user_permissions'
+
+
+
+
+
+
+
+
+
+
+######################################################################################################################################""
+
+
+
+
+
+
+
+
 
 from django.conf import settings
+
+
 class Traceability(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     action_type = models.CharField(max_length=255)
@@ -65,16 +86,21 @@ class Traceability(models.Model):
     def __str__(self):
         return f"{self.action_type} by {self.user} at {self.action_date}"
 
+
 class Onboarding(models.Model):
     nomCycle = models.CharField(max_length=255)
 
     def __str__(self):
         return self.nomCycle
 
+
+
 class EtapeOnboarding(models.Model):
     numeroEtape = models.IntegerField()
     description = models.TextField()
     onboarding = models.ForeignKey('Onboarding', on_delete=models.CASCADE, related_name='etapes', null=True, blank=True)
+
+
 
 class Department(models.Model):
     depName = models.CharField(max_length=255)
@@ -90,6 +116,8 @@ class Department(models.Model):
     def __str__(self):
         return self.depName
 
+
+
 class Equipe(models.Model):
     name = models.CharField(max_length=100, help_text="Nom de l'équipe")
     department = models.ForeignKey('Department', on_delete=models.CASCADE, related_name='equipes', help_text="Département auquel l'équipe est associée", null=True, blank=True)
@@ -98,6 +126,9 @@ class Equipe(models.Model):
 
     def __str__(self):
         return self.name
+
+
+
 
 
 class Competence(models.Model):
@@ -159,18 +190,23 @@ class Employee(models.Model):
                            ) * 100
         return min(max(performance_rate, 0), 100)
 
+
     def save(self, *args, **kwargs):
         action_type = "Saisie de position administrative"
         action_details = f"Position administrative ajoutée pour {self.firstName} {self.lastName}"
 
-        # Enregistrer la trace de l'action
-        Traceability.objects.create(user=self.user_who_performed_action, action_type=action_type,
-                                    details=action_details)
+            # Enregistrer la trace de l'action
+        Traceability.objects.create(action_type=action_type, details=action_details)
 
         super(Employee, self).save(*args, **kwargs)
 
+        # Your other methods...
+
     def __str__(self):
         return f"{self.firstName} {self.lastName}"
+
+
+
 
 class EmployeeCompetence(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='employee_competences')
@@ -178,6 +214,8 @@ class EmployeeCompetence(models.Model):
 
     def __str__(self):
         return f"{self.employee} - {self.competence}"
+
+
 
 class Poste(models.Model):
     nom = models.CharField(max_length=100, default="", help_text="Nom du poste")
@@ -191,6 +229,8 @@ class Poste(models.Model):
     def __str__(self):
         return self.nom
 
+
+
 class Tache(models.Model):
     poste = models.ForeignKey('Poste', on_delete=models.DO_NOTHING, related_name='taches', help_text="Poste")
     titre = models.CharField(max_length=100, default="", help_text="Titre de la tâche")
@@ -202,6 +242,7 @@ class Tache(models.Model):
     presence = models.BooleanField(blank=True, null=True, help_text="Présence sur site")
 
 
+
 class Affectation(models.Model): #des employees a prpos les postes
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     poste = models.ForeignKey(Poste, on_delete=models.CASCADE)
@@ -209,6 +250,7 @@ class Affectation(models.Model): #des employees a prpos les postes
 
     class Meta:
         unique_together = ('employee', 'poste')
+
 
 
 class EmploymentHistory(models.Model):
@@ -221,6 +263,8 @@ class EmploymentHistory(models.Model):
 
     def __str__(self):
         return f"{self.employee} - {self.employer} - {self.position}"
+
+
 
 class Leave(models.Model):   #congé
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='leave_set')
