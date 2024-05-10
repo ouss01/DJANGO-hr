@@ -25,7 +25,6 @@ class CustomUser(AbstractUser):
     is_active = models.BooleanField(default=True)
     preferred_language = models.CharField(max_length=10, default='fr')
 
-    # Other fields from AbstractUser (username, email, password, etc.) are already included
 
     def __str__(self):
         return self.username
@@ -86,7 +85,6 @@ class Traceability(models.Model):
     def __str__(self):
         return f"{self.action_type} by {self.user} at {self.action_date}"
 
-
 class Onboarding(models.Model):
     nomCycle = models.CharField(max_length=255)
 
@@ -126,8 +124,6 @@ class Equipe(models.Model):
 
     def __str__(self):
         return self.name
-
-
 
 
 
@@ -171,10 +167,10 @@ class Employee(models.Model):
 
     emplacement = models.CharField(max_length=255,default=None)
 
-
+    photo = models.ImageField(blank=True, upload_to="employees/photos/", verbose_name="Photo")
 
     performance_rate = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True,
-                                           verbose_name=_("Performance Rate (%)"))
+                                          verbose_name=_("Performance Rate (%)"))
     def calculate_performance_rate(self):
 
         sanctions_factor = 1 - (len(self.sanctions) / 100)  # na9as fih % aux sanctions
@@ -228,8 +224,6 @@ class Poste(models.Model):
 
     def __str__(self):
         return self.nom
-
-
 
 class Tache(models.Model):
     poste = models.ForeignKey('Poste', on_delete=models.DO_NOTHING, related_name='taches', help_text="Poste")
