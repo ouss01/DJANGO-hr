@@ -6,7 +6,7 @@ from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 
 class CustomUser(AbstractUser):
-    # Custom fields
+
     first_name = models.CharField(max_length=150)
     last_name = models.CharField(max_length=150)
     date_of_birth = models.DateField(null=True, blank=True)
@@ -225,6 +225,8 @@ class Poste(models.Model):
     def __str__(self):
         return self.nom
 
+from django.db import models
+
 class Tache(models.Model):
     poste = models.ForeignKey('Poste', on_delete=models.DO_NOTHING, related_name='taches', help_text="Poste")
     titre = models.CharField(max_length=100, default="", help_text="Titre de la tâche")
@@ -232,8 +234,12 @@ class Tache(models.Model):
     budget = models.DecimalField(default=0, decimal_places=2, max_digits=10, help_text="Budget de la tâche")
     budget_min = models.DecimalField(default=0, decimal_places=2, max_digits=10, help_text="Budget minimum de la tâche")
     date_debut = models.DateField(help_text="Date de début")
-    date_fin = models.DateField(help_text="Date de fin",null=True,blank=True)
+    date_fin = models.DateField(help_text="Date de fin", null=True, blank=True)
     presence = models.BooleanField(blank=True, null=True, help_text="Présence sur site")
+
+    def __str__(self):
+        return self.titre
+
 
 
 
