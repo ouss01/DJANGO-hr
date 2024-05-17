@@ -242,7 +242,6 @@ class Tache(models.Model):
 
 
 
-
 class Affectation(models.Model): #des employees a prpos les postes
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     poste = models.ForeignKey(Poste, on_delete=models.CASCADE)
