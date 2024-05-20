@@ -1,16 +1,11 @@
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
-from django.views.decorators.csrf import csrf_protect
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
 from rest_framework import status, generics
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404
 from django.http import HttpResponseNotFound
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
-from django.http import JsonResponse
-from django.middleware.csrf import get_token
 from rest_framework.utils import json
 
 from .models import (
@@ -18,7 +13,7 @@ from .models import (
     Competence, Onboarding, EtapeOnboarding,
     Equipe, Affectation, EmploymentHistory
 )
-from .forms import PosteForm, UserRegistrationForm
+from .forms import PosteForm
 from .serializers import (
     DepartmentSerializer, EmployeeSerializer, PosteSerializer,
     TacheSerializer, CompetenceSerializer, EquipeSerializer,
@@ -257,6 +252,7 @@ class TacheRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 
 
 # Equipe Views
+
 @api_view(['GET', 'POST', 'PUT', 'DELETE'])
 @parser_classes([JSONParser])
 def equipe_api(request, id=0):
@@ -288,8 +284,6 @@ def equipe_api(request, id=0):
 
     except Equipe.DoesNotExist:
         return HttpResponseNotFound("Equipe not found")
-
-
 # Onboarding Views
 class OnboardingListCreateView(generics.ListCreateAPIView):
     queryset = Onboarding.objects.all()
