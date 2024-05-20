@@ -252,7 +252,6 @@ class TacheRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 
 
 # Equipe Views
-
 @api_view(['GET', 'POST', 'PUT', 'DELETE'])
 @parser_classes([JSONParser])
 def equipe_api(request, id=0):
@@ -284,6 +283,8 @@ def equipe_api(request, id=0):
 
     except Equipe.DoesNotExist:
         return HttpResponseNotFound("Equipe not found")
+
+
 # Onboarding Views
 class OnboardingListCreateView(generics.ListCreateAPIView):
     queryset = Onboarding.objects.all()
