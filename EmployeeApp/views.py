@@ -250,39 +250,56 @@ class TacheRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Tache.objects.all()
     serializer_class = TacheSerializer
 
+from rest_framework.decorators import api_view, parser_classes
+from rest_framework.parsers import JSONParser
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+from django.http import HttpResponseNotFound
+from .models import Equipe
+from .serializers import EquipeSerializer
 
-# Equipe Views
 @api_view(['GET', 'POST', 'PUT', 'DELETE'])
 @parser_classes([JSONParser])
 def equipe_api(request, id=0):
     try:
         if request.method == 'GET':
-            equipes = Equipe.objects.all()
-            serializer = EquipeSerializer(equipes, many=True)
-            return Response(serializer.data)
-
+            return get_equipes()
         elif request.method == 'POST':
-            serializer = EquipeSerializer(data=request.data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response("Equipe ajouté.", status=status.HTTP_201_CREATED)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+            return create_equipe(request.data)
         elif request.method == 'PUT':
-            equipe = get_object_or_404(Equipe, id=id)
-            serializer = EquipeSerializer(equipe, data=request.data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response("Equipe màj.", status=status.HTTP_200_OK)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+            return update_equipe(id, request.data)
         elif request.method == 'DELETE':
-            equipe = get_object_or_404(Equipe, id=id)
-            equipe.delete()
-            return Response("Equipe supprimé!", status=status.HTTP_204_NO_CONTENT)
-
+            return delete_equipe(id)
     except Equipe.DoesNotExist:
         return HttpResponseNotFound("Equipe not found")
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+def get_equipes():
+    equipes = Equipe.objects.all()
+    serializer = EquipeSerializer(equipes, many=True)
+    return Response(serializer.data)
+
+def create_equipe(data):
+    serializer = EquipeSerializer(data=data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response("Equipe ajouté.", status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+def update_equipe(id, data):
+    equipe = get_object_or_404(Equipe, id=id)
+    serializer = EquipeSerializer(equipe, data=data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response("Equipe màj.", status=status.HTTP_200_OK)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+def delete_equipe(id):
+    equipe = get_object_or_404(Equipe, id=id)
+    equipe.delete()
+    return Response("Equipe supprimé!", status=status.HTTP_204_NO_CONTENT)
 
 
 # Onboarding Views
@@ -419,7 +436,6 @@ class AffectationListCreateView(generics.ListCreateAPIView):
         serializer = AffectationSerializer(data=request.data)
 
         if serializer.is_valid():
-            # Validate the data, including the total ratio sum
             serializer.validate(request.data)
             # Save the affectation
             serializer.save()

@@ -5,10 +5,23 @@ from .models import Poste
 from .models import Onboarding, EtapeOnboarding
 
 
+from rest_framework import serializers
+from .models import Equipe, Employee
+
 class EquipeSerializer(serializers.ModelSerializer):
+    equipe_leader_name = serializers.SerializerMethodField()
+    equipe_leader_backup_name = serializers.SerializerMethodField()
+
     class Meta:
         model = Equipe
-        fields = '__all__'
+        fields = ['id', 'name', 'department', 'equipe_leader', 'equipe_leader_backup', 'equipe_leader_name', 'equipe_leader_backup_name']
+
+    def get_equipe_leader_name(self, obj):
+        return f"{obj.equipe_leader.firstName} {obj.equipe_leader.lastName}" if obj.equipe_leader else None
+
+    def get_equipe_leader_backup_name(self, obj):
+        return f"{obj.equipe_leader_backup.firstName} {obj.equipe_leader_backup.lastName}" if obj.equipe_leader_backup else None
+
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
