@@ -263,12 +263,28 @@ class EmploymentHistory(models.Model):
     def __str__(self):
         return f"{self.employee} - {self.employer} - {self.position}"
 
+class ContractType(models.Model):
+    name = models.CharField(max_length=100, help_text="Name of the contract type")
+
+    def __str__(self):
+        return self.name
+
+class Contract(models.Model):
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='contracts')
+    contract_type = models.ForeignKey(ContractType, on_delete=models.CASCADE, related_name='contracts')
+    start_date = models.DateField()
+    end_date = models.DateField()
+    duration_regulation = models.IntegerField(help_text="Regulatory duration for the contract type (in months)")
+
+    def __str__(self):
+        return f"{self.employee} - {self.contract_type} Contract: {self.start_date} to {self.end_date}"
 
 
 class Leave(models.Model):   #congé
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='leave_set')
     start_date = models.DateField()
     end_date = models.DateField()
+    departure_reason = models.CharField(max_length=100, default=None,help_text="Name of the departure reason")
 
     def __str__(self):
         return f"{self.employee} - Leave: {self.start_date} to {self.end_date}"

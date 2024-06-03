@@ -17,12 +17,14 @@ class EquipeSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'department', 'equipe_leader', 'equipe_leader_backup', 'equipe_leader_name', 'equipe_leader_backup_name']
 
     def get_equipe_leader_name(self, obj):
-        return f"{obj.equipe_leader.firstName} {obj.equipe_leader.lastName}" if obj.equipe_leader else None
+        if obj.equipe_leader:
+            return f"{obj.equipe_leader.firstName} {obj.equipe_leader.lastName}"
+        return None
 
     def get_equipe_leader_backup_name(self, obj):
-        return f"{obj.equipe_leader_backup.firstName} {obj.equipe_leader_backup.lastName}" if obj.equipe_leader_backup else None
-
-
+        if obj.equipe_leader_backup:
+            return f"{obj.equipe_leader_backup.firstName} {obj.equipe_leader_backup.lastName}"
+        return None
 
 class EmployeeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -132,3 +134,14 @@ class EmployeeSearchSerializer(serializers.ModelSerializer):
 
 
 
+from .models import ContractType, Contract
+
+class ContractTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContractType
+        fields = '__all__'
+
+class ContractSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Contract
+        fields = '__all__'

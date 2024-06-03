@@ -437,7 +437,6 @@ class AffectationListCreateView(generics.ListCreateAPIView):
 
         if serializer.is_valid():
             serializer.validate(request.data)
-            # Save the affectation
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -484,15 +483,7 @@ def search_employee(request):
 
 
 
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
-from django.urls import reverse
 
-
-
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login
-from django.http import JsonResponse
 
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
@@ -593,3 +584,88 @@ def register(request):
             return JsonResponse({'errors': str(e)}, status=400)
 
     return JsonResponse({'errors': 'Invalid request method'}, status=405)
+
+
+# views.py
+
+from rest_framework import status
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from .models import ContractType, Contract
+from .serializers import ContractTypeSerializer, ContractSerializer
+
+
+@api_view(['GET', 'POST'])
+def contract_type_list(request):
+    if request.method == 'GET':
+        contract_types = ContractType.objects.all()
+        serializer = ContractTypeSerializer(contract_types, many=True)
+        return Response(serializer.data)
+
+    elif request.method == 'POST':
+        serializer = ContractTypeSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET', 'PUT', 'DELETE'])
+def contract_type_detail(request, pk):
+    try:
+        contract_type = ContractType.objects.get(pk=pk)
+    except ContractType.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        serializer = ContractTypeSerializer(contract_type)
+        return Response(serializer.data)
+
+    elif request.method == 'PUT':
+        serializer = ContractTypeSerializer(contract_type, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        contract_type.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['GET', 'POST'])
+def contract_list(request):
+    if request.method == 'GET':
+        contracts = Contract.objects.all()
+        serializer = ContractSerializer(contracts, many=True)
+        return Response(serializer.data)
+
+    elif request.method == 'POST':
+        serializer = ContractSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET', 'PUT', 'DELETE'])
+def contract_detail(request, pk):
+    try:
+        contract = Contract.objects.get(pk=pk)
+    except Contract.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        serializer = ContractSerializer(contract)
+        return Response(serializer.data)
+
+    elif request.method == 'PUT':
+        serializer = ContractSerializer(contract, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        contract.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
