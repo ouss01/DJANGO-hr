@@ -1,9 +1,6 @@
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import JSONParser
-from rest_framework.response import Response
-from rest_framework import status, generics
-from django.shortcuts import get_object_or_404
-from django.http import HttpResponseNotFound
+from rest_framework import generics
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from rest_framework.utils import json
@@ -11,12 +8,12 @@ from rest_framework.utils import json
 from .models import (
     Department, Employee, Poste, Tache,
     Competence, Onboarding, EtapeOnboarding,
-    Equipe, Affectation, EmploymentHistory
+     Affectation, EmploymentHistory
 )
 from .forms import PosteForm
 from .serializers import (
     DepartmentSerializer, EmployeeSerializer, PosteSerializer,
-    TacheSerializer, CompetenceSerializer, EquipeSerializer,
+    TacheSerializer, CompetenceSerializer,
     EtapeOnboardingSerializer, OnboardingSerializer,
     EmployeeCompetenceSerializer, AffectationSerializer,
     EmploymentHistorySerializer
@@ -252,8 +249,6 @@ class TacheRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import JSONParser
-from rest_framework.response import Response
-from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponseNotFound
 from .models import Equipe
@@ -586,7 +581,6 @@ def register(request):
     return JsonResponse({'errors': 'Invalid request method'}, status=405)
 
 
-# views.py
 
 from rest_framework import status
 from rest_framework.decorators import api_view
@@ -642,10 +636,10 @@ def contract_list(request):
 
     elif request.method == 'POST':
         serializer = ContractSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    if serializer.is_valid():
+        serializer.save()
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET', 'PUT', 'DELETE'])

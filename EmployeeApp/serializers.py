@@ -142,6 +142,8 @@ class ContractTypeSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ContractSerializer(serializers.ModelSerializer):
+    contract_type_name = serializers.CharField(source='contract_type.name', read_only=True)
+
     class Meta:
         model = Contract
-        fields = '__all__'
+        fields = ['id', 'employee', 'contract_type', 'contract_type_name', 'start_date', 'end_date', 'duration_regulation']

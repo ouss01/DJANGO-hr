@@ -1,6 +1,5 @@
 from django.urls import path, re_path, include
 from . import views
-from django.contrib.auth import views as auth_views
 from .views import (
     department_api,
     EmployeeListCreateView, EmployeeRetrieveUpdateDestroyView,
@@ -74,4 +73,10 @@ urlpatterns = [
     path('login/', views.custom_login, name='custom_login'),
     path('logout/', views.custom_logout, name='custom_logout'),
     path('register/', views.register, name='register'),
+
+    #contrats
+    path('contract-types/', views.contract_type_list, name='contract_type_list'),
+    path('contract-types/<int:pk>/', views.contract_type_detail, name='contract_type_detail'),
+    path('contracts/', views.contract_list, name='contract_list'),
+    path('contracts/<int:pk>/', views.contract_detail, name='contract_detail')
 ]
