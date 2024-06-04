@@ -212,7 +212,6 @@ class EmployeeCompetence(models.Model):
         return f"{self.employee} - {self.competence}"
 
 
-
 class Poste(models.Model):
     nom = models.CharField(max_length=100, default="", help_text="Nom du poste")
     employee = models.ForeignKey('Employee', on_delete=models.CASCADE, related_name='postes', help_text="Employé")
