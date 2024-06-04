@@ -221,6 +221,9 @@ class Poste(models.Model):
     budget = models.DecimalField(default=0, decimal_places=2, max_digits=10, help_text="Budget du poste")
     conges_supp = models.DecimalField(default=0, decimal_places=2, max_digits=5, help_text="Congés supplémentaires")
     objects = models.Manager()
+    date_creation = models.DateTimeField(auto_now_add=True)
+    date_modification = models.DateTimeField(auto_now=True)
+    date_fermeture = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
         return self.nom

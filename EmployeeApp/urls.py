@@ -21,8 +21,9 @@ urlpatterns = [
     path('employees/<int:pk>/', EmployeeRetrieveUpdateDestroyView.as_view(), name='employee-retrieve-update-destroy'),
 
     # Poste URLs
-    path('postes/', PosteListCreateView.as_view(), name='poste-list-create'),
-    path('postes/<int:pk>/', PosteRetrieveUpdateDestroyView.as_view(), name='poste-retrieve-update-destroy'),
+    path('create-poste/', views.create_poste, name='create_poste'),
+    path('update-poste/<int:pk>/', views.update_poste, name='update_poste'),
+    path('close-poste/<int:pk>/', views.close_poste, name='close_poste'),
 
     # Onboarding URLs
     path('onboarding/', OnboardingListCreateView.as_view(), name='onboarding-list-create'),

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import JSONParser
 from rest_framework import generics
@@ -127,41 +129,42 @@ class PosteRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = PosteSerializer
 
 
+
+from .models import Poste
+from .serializers import PosteSerializer
+
+@api_view(['POST'])
 def create_poste(request):
-    if request.method == 'POST':
-        form = PosteForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('poste_list')
-    else:
-        form = PosteForm()
+    serializer = PosteSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    return render(request, 'create_poste.html', {'form': form})
+@api_view(['PUT'])
+def update_poste(request, pk):
+    try:
+        poste = Poste.objects.get(pk=pk)
+    except Poste.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
 
+    serializer = PosteSerializer(poste, data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-def view_poste(request, poste_id):
-    poste = get_object_or_404(Poste, pk=poste_id)
-    return render(request, 'view_poste.html', {'poste': poste})
+@api_view(['POST'])
+def close_poste(request, pk):
+    try:
+        poste = Poste.objects.get(pk=pk)
+    except Poste.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
 
+    poste.date_fermeture = datetime.now()
+    poste.save()
+    return Response(status=status.HTTP_204_NO_CONTENT)
 
-def update_poste(request, poste_id):
-    poste = get_object_or_404(Poste, pk=poste_id)
-
-    if request.method == 'POST':
-        form = PosteForm(request.POST, instance=poste)
-        if form.is_valid():
-            form.save()
-            return redirect('poste_list')
-    else:
-        form = PosteForm(instance=poste)
-
-    return render(request, 'update_poste.html', {'form': form})
-
-
-def delete_poste(request, poste_id):
-    poste = get_object_or_404(Poste, pk=poste_id)
-    poste.delete()
-    return redirect('poste_list')
 
 
 # Competence Views
