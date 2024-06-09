@@ -1,5 +1,7 @@
 from django.urls import path, re_path, include
 from . import views
+from django.conf import settings
+from django.conf.urls.static import static
 from .views import (
     department_api,
     EmployeeListCreateView, EmployeeRetrieveUpdateDestroyView,
@@ -12,12 +14,16 @@ from .views import (
 )
 
 urlpatterns = [
+
+
+
+
     # Department URLs
     path('department/', department_api, name='department-api'),
     path('department/<int:id>/', department_api, name='department-api-detail'),
 
     # Employee URLs
-    path('employees/', EmployeeListCreateView.as_view(), name='employee-list-create'),
+    path('employees/', EmployeeListCreateView.as_view(), name='employee-list-create',),
     path('employees/<int:pk>/', EmployeeRetrieveUpdateDestroyView.as_view(), name='employee-retrieve-update-destroy'),
 
     # Poste URLs
@@ -79,5 +85,10 @@ urlpatterns = [
     path('contract-types/', views.contract_type_list, name='contract_type_list'),
     path('contract-types/<int:pk>/', views.contract_type_detail, name='contract_type_detail'),
     path('contracts/', views.contract_list, name='contract_list'),
-    path('contracts/<int:pk>/', views.contract_detail, name='contract_detail')
+    path('contracts/<int:pk>/', views.contract_detail, name='contract_detail'),
+
+
+
 ]
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

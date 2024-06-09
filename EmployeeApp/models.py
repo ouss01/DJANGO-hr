@@ -4,6 +4,9 @@ from django.core.validators import RegexValidator,MinValueValidator, MaxValueVal
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+from django.core.exceptions import ValidationError
+import os
+
 
 class CustomUser(AbstractUser):
 
@@ -138,7 +141,10 @@ class Competence(models.Model):
         return f"{self.tache} - {self.diplome}"
 
 
-
+def validate_pdf(file):
+    ext = os.path.splitext(file.name)[1]  # Extract the file extension
+    if ext.lower() != '.pdf':
+        raise ValidationError('Only PDF files are allowed.')
 
 class Employee(models.Model):
     employeeID = models.IntegerField()
@@ -157,20 +163,21 @@ class Employee(models.Model):
     retirementDate = models.DateField(null=True, blank=True)
     employeeCarreerHistory = models.TextField()
     onboarding = models.ForeignKey('Onboarding', on_delete=models.SET_NULL, null=True, blank=True, related_name='employees')
-    competences = models.ManyToManyField(Competence, through='EmployeeCompetence', related_name='employees')
-    matricule = models.CharField(max_length=8, unique=True, default=None,null=False, validators=[RegexValidator(regex='^\d{8}$', message='Le matricule doit contenir exactement 8 chiffres.')])
+    competences = models.ManyToManyField('Competence', through='EmployeeCompetence', related_name='employees')
+    matricule = models.CharField(max_length=8, unique=True, default=None, null=False, validators=[RegexValidator(regex='^\d{8}$', message='Le matricule doit contenir exactement 8 chiffres.')])
 
-    # Correct field name should be 'level'
-    level = models.IntegerField(
-        validators=[MinValueValidator(1), MaxValueValidator(8)]
-    )
 
-    emplacement = models.CharField(max_length=255,default=None)
+
+    emplacement = models.CharField(max_length=255, default=None)
 
     photo = models.ImageField(blank=True, upload_to="employees/photos/", verbose_name="Photo")
 
-    performance_rate = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True,
-                                          verbose_name=_("Performance Rate (%)"))
+    performance_rate = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, verbose_name="Performance Rate (%)")
+
+    cv = models.FileField(upload_to='employees/cvs/', validators=[validate_pdf], null=True, blank=True)
+
+    parentId = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='children', db_column='parentId')
+    contract_type = models.CharField(max_length=100, blank=True, null=True)
     def calculate_performance_rate(self):
 
         sanctions_factor = 1 - (len(self.sanctions) / 100)  # na9as fih % aux sanctions
@@ -191,7 +198,7 @@ class Employee(models.Model):
         action_type = "Saisie de position administrative"
         action_details = f"Position administrative ajoutée pour {self.firstName} {self.lastName}"
 
-            # Enregistrer la trace de l'action
+
         Traceability.objects.create(action_type=action_type, details=action_details)
 
         super(Employee, self).save(*args, **kwargs)

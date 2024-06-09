@@ -1,5 +1,5 @@
 from django.db.models import Sum
-from rest_framework import serializers
+from rest_framework import serializers, viewsets
 from .models import Equipe, Employee, Tache, Competence, Department, EmployeeCompetence, Affectation, EmploymentHistory
 from .models import Poste
 from .models import Onboarding, EtapeOnboarding
@@ -30,6 +30,9 @@ class EmployeeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Employee
         fields = '__all__'
+class EmployeeViewSet(viewsets.ModelViewSet):
+    queryset = Employee.objects.all()
+    serializer_class = EmployeeSerializer
 
 
 

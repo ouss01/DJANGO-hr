@@ -107,15 +107,22 @@ class EmployeeRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 
 
 # Save File View
+import logging
+
+logger = logging.getLogger(__name__)
+
 @api_view(['POST'])
 @parser_classes([JSONParser])
 def save_file(request):
     try:
         file = request.FILES['file']
         file_name = default_storage.save(file.name, ContentFile(file.read()))
+        logger.debug(f"File saved at: {default_storage.path(file_name)}")
         return Response(f"File '{file_name}' saved successfully.", status=status.HTTP_201_CREATED)
     except Exception as e:
+        logger.error(f"Error saving file: {e}")
         return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
+
 
 
 # Poste Views

@@ -6,13 +6,13 @@ from rest_framework import generics
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from rest_framework.utils import json
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import (
     Department, Employee, Poste, Tache,
     Competence, Onboarding, EtapeOnboarding,
      Affectation, EmploymentHistory
 )
-from .forms import PosteForm
 from .serializers import (
     DepartmentSerializer, EmployeeSerializer, PosteSerializer,
     TacheSerializer, CompetenceSerializer,
@@ -118,7 +118,6 @@ def save_file(request):
         return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
 
 
-# Poste Views
 class PosteListCreateView(generics.ListCreateAPIView):
     queryset = Poste.objects.all()
     serializer_class = PosteSerializer
@@ -203,7 +202,6 @@ def competence_api(request, id=0):
         return HttpResponseNotFound("Competence not found")
 
 
-# Tache Views
 @api_view(['GET', 'POST', 'PUT', 'DELETE'])
 @parser_classes([JSONParser])
 def tache_api(request, id=0):
@@ -238,14 +236,11 @@ def tache_api(request, id=0):
     except Tache.DoesNotExist:
         return HttpResponseNotFound("Tache n'éxiste pas")
 
-
-# Tache List Create View
 class TacheListCreateView(generics.ListCreateAPIView):
     queryset = Tache.objects.all()
     serializer_class = TacheSerializer
 
 
-# Tache Retrieve Update Destroy View
 class TacheRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Tache.objects.all()
     serializer_class = TacheSerializer
@@ -343,7 +338,6 @@ def onboarding_api(request, id=0):
         return HttpResponseNotFound("Onboarding not found")
 
 
-# Etape Onboarding API
 @api_view(['GET', 'POST'])
 @parser_classes([JSONParser])
 def etape_onboarding_api(request, onboarding_id):
@@ -456,22 +450,17 @@ class EmploymentHistoryRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyA
 @parser_classes([JSONParser])
 def search_employee(request):
     try:
-        # Get the query parameters from the request
         name = request.query_params.get('name')
         position = request.query_params.get('position')
 
-        # Initialize queryset
         queryset = Employee.objects.all()
 
-        # Filter employees by name if provided
         if name:
             queryset = queryset.filter(firstName__icontains=name) | queryset.filter(lastName__icontains=name)
 
-        # Filter employees by position if provided
         if position:
             queryset = queryset.filter(position__icontains=position)
 
-        # Serialize the results using EmployeeSerializer
         serializer = EmployeeSerializer(queryset, many=True)
 
         return Response(serializer.data)
@@ -483,16 +472,16 @@ def search_employee(request):
 
 
 
-from django.shortcuts import render, redirect
+
 from django.contrib.auth import authenticate, login
-from django.http import JsonResponse
+
 from django.views.decorators.csrf import csrf_exempt
-import json
+from rest_framework_simplejwt.tokens import RefreshToken
+
 
 @csrf_exempt
 def custom_login(request):
     if request.method == 'POST':
-
         if 'username' in request.POST and 'password' in request.POST:
             username = request.POST.get('username')
             password = request.POST.get('password')
@@ -504,25 +493,28 @@ def custom_login(request):
             except json.JSONDecodeError:
                 return JsonResponse({'error': 'Invalid JSON format in request body'}, status=400)
 
-
         if not username or not password:
             return JsonResponse({'error': 'Username and password are required'}, status=400)
 
-
         user = authenticate(request, username=username, password=password)
         if user is not None:
-
             login(request, user)
 
-            return JsonResponse({'success': 'Login successful'}, status=200)
-        else:
+            # Generate token
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
 
+            return JsonResponse({
+                'success': 'Login successful',
+                'access_token': access_token,
+                'refresh_token': str(refresh)
+            }, status=200)
+        else:
             return JsonResponse({'error': 'Invalid credentials'}, status=400)
     else:
         return JsonResponse({'error': 'Method Not Allowed'}, status=405)
 
 
-from django.shortcuts import redirect
 from django.contrib.auth import logout
 @csrf_exempt
 def custom_logout(request):
@@ -534,10 +526,10 @@ def custom_logout(request):
         return JsonResponse({'error': 'User not logged in'}, status=400)
 
 
-import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from .models import CustomUser
+from django.contrib.auth import get_user_model
+import json
 
 @csrf_exempt
 def register(request):
@@ -546,32 +538,29 @@ def register(request):
     """
     if request.method == 'POST':
         try:
+            if not request.content_type == 'application/json':
+                return JsonResponse({'errors': 'Content-Type header must be application/json'}, status=400)
 
             data = json.loads(request.body)
-
-
             custom_user_data = data.get('CustomUser', {})
-
 
             username = custom_user_data.get('username', None)
             email = custom_user_data.get('email', None)
             password = custom_user_data.get('password', None)
 
-
             if not username or not email or not password:
                 return JsonResponse({'errors': 'All fields are required'}, status=400)
 
-            if CustomUser.objects.filter(email=email).exists():
+            User = get_user_model()
+            if User.objects.filter(email=email).exists():
                 return JsonResponse({'errors': 'Email address already exists'}, status=400)
 
-
-            user = CustomUser.objects.create_user(username=username, email=email, password=password)
-
+            user = User.objects.create_user(username=username, email=email, password=password)
 
             user.first_name = custom_user_data.get('first_name', '')
             user.last_name = custom_user_data.get('last_name', '')
             user.date_of_birth = custom_user_data.get('date_of_birth', None)
-          
+
             user.save()
 
             return JsonResponse({'message': 'User registered successfully'}, status=201)
@@ -582,7 +571,6 @@ def register(request):
             return JsonResponse({'errors': str(e)}, status=400)
 
     return JsonResponse({'errors': 'Invalid request method'}, status=405)
-
 
 
 from rest_framework import status
