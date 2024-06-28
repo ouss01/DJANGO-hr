@@ -61,18 +61,38 @@ class CompetenceSerializer(serializers.ModelSerializer):
 
 
 
-class OnboardingSerializer(serializers.ModelSerializer):
+from rest_framework import serializers
+from .models import Onboarding, EtapeOnboarding, Task, Notification, OnboardingProgress
+
+class TaskSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Onboarding
-        fields = ['id', 'nomCycle']
-
-# serializers.py
-
+        model = Task
+        fields = '__all__'
 
 class EtapeOnboardingSerializer(serializers.ModelSerializer):
+    tasks = TaskSerializer(many=True, read_only=True)
+
     class Meta:
         model = EtapeOnboarding
-        fields = ['id', 'numeroEtape', 'description', 'onboarding']
+        fields = '__all__'
+
+class OnboardingSerializer(serializers.ModelSerializer):
+    etapes = EtapeOnboardingSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Onboarding
+        fields = '__all__'
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = '__all__'
+
+class OnboardingProgressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OnboardingProgress
+        fields = '__all__'
+
 
 
 class EmployeeCompetenceSerializer(serializers.ModelSerializer):

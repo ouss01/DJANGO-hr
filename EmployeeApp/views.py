@@ -2,7 +2,7 @@ from datetime import datetime
 
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import JSONParser
-from rest_framework import generics
+from rest_framework import generics, viewsets
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from rest_framework.utils import json
@@ -11,14 +11,14 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .models import (
     Department, Employee, Poste, Tache,
     Competence, Onboarding, EtapeOnboarding,
-     Affectation, EmploymentHistory
+    Affectation, EmploymentHistory, Task, Notification, OnboardingProgress
 )
 from .serializers import (
     DepartmentSerializer, EmployeeSerializer, PosteSerializer,
     TacheSerializer, CompetenceSerializer,
     EtapeOnboardingSerializer, OnboardingSerializer,
     EmployeeCompetenceSerializer, AffectationSerializer,
-    EmploymentHistorySerializer
+    EmploymentHistorySerializer, TaskSerializer, NotificationSerializer, OnboardingProgressSerializer
 )
 
 
@@ -296,26 +296,29 @@ def delete_equipe(id):
 
 
 # Onboarding Views
-class OnboardingListCreateView(generics.ListCreateAPIView):
+from rest_framework import viewsets
+from .models import Onboarding, EtapeOnboarding, Task, Notification, OnboardingProgress
+from .serializers import OnboardingSerializer, EtapeOnboardingSerializer, TaskSerializer, NotificationSerializer, OnboardingProgressSerializer
+
+class OnboardingViewSet(viewsets.ModelViewSet):
     queryset = Onboarding.objects.all()
     serializer_class = OnboardingSerializer
 
-
-class OnboardingRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Onboarding.objects.all()
-    serializer_class = OnboardingSerializer
-
-
-# Etape Onboarding Views
-class EtapeOnboardingListCreateView(generics.ListCreateAPIView):
+class EtapeOnboardingViewSet(viewsets.ModelViewSet):
     queryset = EtapeOnboarding.objects.all()
     serializer_class = EtapeOnboardingSerializer
 
+class TaskViewSet(viewsets.ModelViewSet):
+    queryset = Task.objects.all()
+    serializer_class = TaskSerializer
 
-class EtapeOnboardingRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = EtapeOnboarding.objects.all()
-    serializer_class = EtapeOnboardingSerializer
+class NotificationViewSet(viewsets.ModelViewSet):
+    queryset = Notification.objects.all()
+    serializer_class = NotificationSerializer
 
+class OnboardingProgressViewSet(viewsets.ModelViewSet):
+    queryset = OnboardingProgress.objects.all()
+    serializer_class = OnboardingProgressSerializer
 
 @api_view(['GET', 'POST'])
 @parser_classes([JSONParser])
@@ -478,6 +481,17 @@ from django.contrib.auth import authenticate, login
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from django.contrib.auth import authenticate, login
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.http import JsonResponse
+import json
+
+from django.contrib.auth import authenticate, login
+from django.http import JsonResponse
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.views.decorators.csrf import csrf_exempt
+import json
 
 @csrf_exempt
 def custom_login(request):
@@ -500,19 +514,96 @@ def custom_login(request):
         if user is not None:
             login(request, user)
 
-            # Generate token
+            # Generate token with additional claims
             refresh = RefreshToken.for_user(user)
-            access_token = str(refresh.access_token)
+            access_token = refresh.access_token
+            access_token['username'] = user.username
+            access_token['roles'] = user.roles  # Assuming the user has a related profile with a 'role' field
 
             return JsonResponse({
                 'success': 'Login successful',
-                'access_token': access_token,
-                'refresh_token': str(refresh)
+                'access_token': str(access_token),
+                'refresh_token': str(refresh),
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                }
             }, status=200)
         else:
             return JsonResponse({'error': 'Invalid credentials'}, status=400)
     else:
         return JsonResponse({'error': 'Method Not Allowed'}, status=405)
+
+from django.contrib.auth.decorators import login_required
+import jwt  # Assuming you're using JWT for token handling
+from django.conf import settings
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+
+@login_required
+def get_current_user(request):
+    user = request.user
+    token = request.headers.get('Authorization').split()[1]  # Assuming token is in Authorization header
+
+    try:
+        decoded_token = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+        username_from_token = decoded_token.get('username')
+        role_from_token = decoded_token.get('role')
+    except jwt.ExpiredSignatureError:
+        return JsonResponse({'error': 'Token is expired'}, status=401)
+    except jwt.DecodeError:
+        return JsonResponse({'error': 'Invalid token'}, status=401)
+
+    return JsonResponse({
+        'id': user.id,
+        'username': username_from_token,
+        'email': user.email,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
+        'role': role_from_token,
+    }, status=200)
+
+
+
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AnonymousUser
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
+User = get_user_model()
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def sign_in_with_token(request):
+    jwt_authenticator = JWTAuthentication()
+    try:
+        # Try to authenticate the user using the token
+        validated_token = jwt_authenticator.get_validated_token(request.data['accessToken'])
+        user = jwt_authenticator.get_user(validated_token)
+    except Exception as e:
+        return Response({'detail': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+
+    if isinstance(user, AnonymousUser):
+        return Response({'detail': 'Invalid token'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    # Return user information and a new token if necessary
+    refresh = RefreshToken.for_user(user)
+    access_token = str(refresh.access_token)
+
+    return Response({
+        'accessToken': access_token,
+        'user': {
+            'username': user.username,
+            'email': user.email,
+            # Add any other user details you want to include
+        }
+    }, status=status.HTTP_200_OK)
 
 
 from django.contrib.auth import logout
@@ -525,10 +616,9 @@ def custom_logout(request):
     else:
         return JsonResponse({'error': 'User not logged in'}, status=400)
 
-
+from django.contrib.auth import get_user_model
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth import get_user_model
 import json
 
 @csrf_exempt
@@ -548,6 +638,11 @@ def register(request):
             email = custom_user_data.get('email', None)
             password = custom_user_data.get('password', None)
 
+            # New fields for role selection
+            is_hr_manager = custom_user_data.get('is_hr_manager', False)
+            is_manager = custom_user_data.get('is_manager', False)
+            is_employee = custom_user_data.get('is_employee', True)  # Default to Employee if none specified
+
             if not username or not email or not password:
                 return JsonResponse({'errors': 'All fields are required'}, status=400)
 
@@ -560,6 +655,11 @@ def register(request):
             user.first_name = custom_user_data.get('first_name', '')
             user.last_name = custom_user_data.get('last_name', '')
             user.date_of_birth = custom_user_data.get('date_of_birth', None)
+
+            # Set role flags based on input
+            user.is_hr_manager = is_hr_manager
+            user.is_manager = is_manager
+            user.is_employee = is_employee
 
             user.save()
 

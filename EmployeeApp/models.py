@@ -8,7 +8,16 @@ from django.core.exceptions import ValidationError
 import os
 
 
+from django.contrib.auth.models import AbstractUser
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+
 class CustomUser(AbstractUser):
+    ROLES_CHOICES = (
+        ('hr_manager', _('HR Manager')),
+        ('manager', _('Manager')),
+        ('employee', _('Employee')),
+    )
 
     first_name = models.CharField(max_length=150)
     last_name = models.CharField(max_length=150)
@@ -17,17 +26,12 @@ class CustomUser(AbstractUser):
     phone_number = models.CharField(max_length=20, null=True, blank=True)
     address = models.CharField(max_length=255, null=True, blank=True)
     bio = models.TextField(null=True, blank=True)
-    can_edit_posts = models.BooleanField(default=False)
-    can_delete_comments = models.BooleanField(default=False)
-    is_employee = models.BooleanField(default=False)
-    is_manager = models.BooleanField(default=False)
-    is_admin = models.BooleanField(default=False)
+    roles = models.CharField(max_length=255, choices=ROLES_CHOICES, default='employee', verbose_name=_('Roles'))
     facebook_url = models.URLField(max_length=200, null=True, blank=True)
     twitter_url = models.URLField(max_length=200, null=True, blank=True)
     is_subscribed = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     preferred_language = models.CharField(max_length=10, default='fr')
-
 
     def __str__(self):
         return self.username
@@ -35,6 +39,7 @@ class CustomUser(AbstractUser):
     class Meta:
         verbose_name = _('user')
         verbose_name_plural = _('users')
+
 
 
 class CustomUserManager(BaseUserManager):
@@ -87,6 +92,8 @@ class Traceability(models.Model):
 
     def __str__(self):
         return f"{self.action_type} by {self.user} at {self.action_date}"
+from django.db import models
+from django.contrib.auth.models import User
 
 class Onboarding(models.Model):
     nomCycle = models.CharField(max_length=255)
@@ -94,12 +101,53 @@ class Onboarding(models.Model):
     def __str__(self):
         return self.nomCycle
 
-
-
 class EtapeOnboarding(models.Model):
     numeroEtape = models.IntegerField()
     description = models.TextField()
-    onboarding = models.ForeignKey('Onboarding', on_delete=models.CASCADE, related_name='etapes', null=True, blank=True)
+    onboarding = models.ForeignKey(Onboarding, on_delete=models.CASCADE, related_name='etapes', null=True, blank=True)
+
+    def __str__(self):
+        return f"Step {self.numeroEtape}: {self.description}"
+
+class Task(models.Model):
+    TASK_TYPE_CHOICES = [
+        ('email', 'Email Task'),
+        ('calendar', 'Calendar Task'),
+    ]
+    task_type = models.CharField(max_length=10, choices=TASK_TYPE_CHOICES)
+    description = models.TextField()
+    etape = models.ForeignKey(EtapeOnboarding, on_delete=models.CASCADE, related_name='tasks')
+    due_date = models.DateField(null=True, blank=True)
+    first_alert_date = models.DateField(null=True, blank=True)
+    second_alert_date = models.DateField(null=True, blank=True)
+
+    def __str__(self):
+        return self.description
+
+class Notification(models.Model):
+    task = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')
+    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    is_read = models.BooleanField(default=False)
+    sent_date = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Notification for {self.recipient.username}"
+
+class TeamManager(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    team = models.ForeignKey(Onboarding, on_delete=models.CASCADE, related_name='managers')
+
+    def __str__(self):
+        return self.user.username
+
+class OnboardingProgress(models.Model):
+    employee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='onboarding_progress')
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='progress')
+    is_completed = models.BooleanField(default=False)
+    completion_date = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.employee.username} - {self.task.description}"
 
 
 
@@ -116,7 +164,6 @@ class Department(models.Model):
 
     def __str__(self):
         return self.depName
-
 
 
 class Equipe(models.Model):
@@ -166,8 +213,6 @@ class Employee(models.Model):
     competences = models.ManyToManyField('Competence', through='EmployeeCompetence', related_name='employees')
     matricule = models.CharField(max_length=8, unique=True, default=None, null=False, validators=[RegexValidator(regex='^\d{8}$', message='Le matricule doit contenir exactement 8 chiffres.')])
 
-
-
     emplacement = models.CharField(max_length=255, default=None)
 
     photo = models.ImageField(blank=True, upload_to="employees/photos/", verbose_name="Photo")
@@ -203,7 +248,6 @@ class Employee(models.Model):
 
         super(Employee, self).save(*args, **kwargs)
 
-        # Your other methods...
 
     def __str__(self):
         return f"{self.firstName} {self.lastName}"
